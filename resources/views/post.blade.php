@@ -357,6 +357,7 @@
                             </div>
                             @endif
                         </div>
+                        {{-- Просмотры скрыты по запросу
                         <div class="article-stats">
                             <span class="stat-item">
                                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -366,6 +367,7 @@
                                 <span class="views-count">{{ $post->views >= 1000 ? number_format($post->views / 1000, 1) . 'K' : $post->views }}</span>
                             </span>
                         </div>
+                        --}}
                     </div>
 
                     <!-- Post Content Banner Desktop -->

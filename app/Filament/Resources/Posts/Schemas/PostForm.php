@@ -10,6 +10,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -134,7 +135,9 @@ class PostForm
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($set, ?string $state, $get) {
                                 if (!$get('slug')) {
-                                    $slug = Str::slug($state);
+                                    // Remove special characters before generating slug
+                                    $cleanState = preg_replace('/[?!.,;:\'\"«»""„\(\)\[\]{}]/', '', $state ?? '');
+                                    $slug = Str::slug($cleanState);
 
                                     // Make slug unique
                                     $originalSlug = $slug;
@@ -204,22 +207,14 @@ class PostForm
 
                 Section::make(__('posts.sections.category_author'))
                     ->schema([
-                        Select::make('categories')
+                        CheckboxList::make('categories')
                             ->label(__('posts.fields.categories'))
                             ->relationship('categories', 'name')
-                            ->multiple()
-                            ->searchable()
-                            ->preload()
                             ->required()
+                            ->columns(3)
+                            ->gridDirection('row')
+                            ->bulkToggleable()
                             ->helperText(__('posts.fields.categories_helper'))
-                            ->createOptionForm([
-                                TextInput::make('name')
-                                    ->label(__('posts.fields.name'))
-                                    ->required(),
-                                TextInput::make('slug')
-                                    ->label(__('posts.fields.slug'))
-                                    ->required(),
-                            ])
                             ->columnSpanFull(),
                         Select::make('types')
                             ->label(__('posts.fields.types'))

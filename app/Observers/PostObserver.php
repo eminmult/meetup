@@ -170,29 +170,38 @@ class PostObserver
     }
 
     /**
-     * Очистка nginx fastcgi_cache через триггер-файл
+     * Очистка nginx fastcgi_cache напрямую через общий volume
      */
     protected function clearNginxCache(): void
     {
         try {
-            // Создаем триггер-файл для очистки nginx cache
-            // Скрипт на хосте будет проверять этот файл и очищать cache
-            $triggerFile = storage_path('framework/cache/nginx_clear_trigger');
-            touch($triggerFile);
-            file_put_contents($triggerFile, date('Y-m-d H:i:s'));
+            $cachePath = '/var/cache/nginx-cache';
+            $filesDeleted = 0;
 
-            // Также вызываем скрипт напрямую, если доступен
-            $scriptPath = '/home/admin/clear-nginx-cache.sh';
-            if (file_exists($scriptPath)) {
-                exec($scriptPath . ' > /dev/null 2>&1 &');
+            if (is_dir($cachePath)) {
+                // Рекурсивно удаляем все файлы кэша
+                $iterator = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($cachePath, \RecursiveDirectoryIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::CHILD_FIRST
+                );
+
+                foreach ($iterator as $file) {
+                    if ($file->isFile()) {
+                        @unlink($file->getRealPath());
+                        $filesDeleted++;
+                    }
+                }
+
+                \Log::info('Nginx cache cleared directly', [
+                    'cache_path' => $cachePath,
+                    'files_deleted' => $filesDeleted,
+                    'timestamp' => date('Y-m-d H:i:s')
+                ]);
+            } else {
+                \Log::warning('Nginx cache path not found', ['path' => $cachePath]);
             }
-
-            \Log::info('Nginx cache clear triggered', [
-                'trigger_file' => $triggerFile,
-                'timestamp' => date('Y-m-d H:i:s')
-            ]);
         } catch (\Exception $e) {
-            \Log::warning('Failed to trigger nginx cache clear: ' . $e->getMessage());
+            \Log::warning('Failed to clear nginx cache: ' . $e->getMessage());
         }
     }
 }

@@ -13,6 +13,7 @@ services:
       # SSL enabled for Cloudflare:
       - ./docker/nginx-ssl.conf:/etc/nginx/conf.d/default.conf
       - ./docker/ssl:/etc/nginx/ssl:ro
+      - nginx-cache-new1:/var/cache/nginx/fastcgi
     depends_on:
       - php-fpm-new1
     networks:
@@ -31,6 +32,7 @@ services:
     container_name: php-fpm-new1
     volumes:
       - ./:/var/www/html
+      - nginx-cache-new1:/var/cache/nginx-cache
     depends_on:
       - mysql-new1
       - redis-new1
@@ -146,3 +148,4 @@ volumes:
   minio-new1-data:
   redis-new1-data:
   meilisearch-new1-data:
+  nginx-cache-new1:
