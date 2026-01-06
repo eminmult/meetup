@@ -13,9 +13,14 @@ class PostObserver
      */
     public function saving(Post $post): void
     {
-        // Очищаем кеш при ЛЮБОМ изменении существующего поста
+        // Игнорируем обновления только счётчика просмотров
         if ($post->exists && $post->isDirty()) {
-            $this->clearPostCaches($post);
+            $dirtyFields = $post->getDirty();
+            unset($dirtyFields['views'], $dirtyFields['updated_at']);
+
+            if (!empty($dirtyFields)) {
+                $this->clearPostCaches($post);
+            }
         }
     }
 
@@ -24,20 +29,15 @@ class PostObserver
      */
     public function created(Post $post): void
     {
-        // Debug log
-        file_put_contents(storage_path('logs/observer-debug.log'), date('Y-m-d H:i:s') . " - POST CREATED: {$post->id} - {$post->title}\n", FILE_APPEND);
-
-        // Автоматически устанавливаем первую картинку галереи как главную, если главная не установлена
+        // Автоматически устанавливаем первую картинку галереи как главную
         if (!$post->featured_media_id) {
             $firstGalleryImage = $post->getFirstMedia('post-gallery');
             if ($firstGalleryImage) {
                 $post->featured_media_id = $firstGalleryImage->id;
-                $post->saveQuietly(); // Сохраняем без триггера observer, чтобы избежать рекурсии
+                $post->saveQuietly();
             }
         }
 
-        // Sitemap обновляется автоматически каждые 10 минут через cron
-        // SitemapController::clearCache(); // Убрано - не нужно при использовании cron
         $this->clearPostCaches($post);
     }
 
@@ -46,20 +46,24 @@ class PostObserver
      */
     public function updated(Post $post): void
     {
-        // Debug log
-        file_put_contents(storage_path('logs/observer-debug.log'), date('Y-m-d H:i:s') . " - POST UPDATED: {$post->id} - {$post->title}\n", FILE_APPEND);
+        // Игнорируем обновления только счётчика просмотров
+        $changedFields = array_keys($post->getChanges());
+        $ignoredFields = ['views', 'updated_at'];
+        $significantChanges = array_diff($changedFields, $ignoredFields);
+
+        if (empty($significantChanges)) {
+            return; // Только views изменился - не очищаем кеш
+        }
 
         // Автоматически устанавливаем первую картинку галереи как главную, если главная не установлена
         if (!$post->featured_media_id) {
             $firstGalleryImage = $post->getFirstMedia('post-gallery');
             if ($firstGalleryImage) {
                 $post->featured_media_id = $firstGalleryImage->id;
-                $post->saveQuietly(); // Сохраняем без триггера observer, чтобы избежать рекурсии
+                $post->saveQuietly();
             }
         }
 
-        // Sitemap обновляется автоматически каждые 10 минут через cron
-        // SitemapController::clearCache(); // Убрано - не нужно при использовании cron
         $this->clearPostCaches($post);
     }
 
@@ -68,14 +72,7 @@ class PostObserver
      */
     public function deleted(Post $post): void
     {
-        // Debug log для удаления
-        file_put_contents(storage_path('logs/observer-debug.log'), date('Y-m-d H:i:s') . " - POST DELETED: {$post->id} - {$post->title}\n", FILE_APPEND);
-
-        // Явно загружаем связи, даже если пост удален
         $post->loadMissing('categories');
-
-        // Sitemap обновляется автоматически каждые 10 минут через cron
-        // SitemapController::clearCache(); // Убрано - не нужно при использовании cron
         $this->clearPostCaches($post);
     }
 
@@ -84,8 +81,6 @@ class PostObserver
      */
     public function restored(Post $post): void
     {
-        // Sitemap обновляется автоматически каждые 10 минут через cron
-        // SitemapController::clearCache(); // Убрано - не нужно при использовании cron
         $this->clearPostCaches($post);
     }
 
@@ -94,14 +89,6 @@ class PostObserver
      */
     protected function clearPostCaches(Post $post): void
     {
-        $startTime = microtime(true);
-
-        \Log::info('PostObserver: Начало очистки кеша', [
-            'post_id' => $post->id,
-            'post_slug' => $post->slug ?? 'N/A',
-            'post_title' => $post->title ?? 'N/A',
-            'is_deleted' => $post->trashed(),
-        ]);
 
         // Очищаем кеш главной страницы
         Cache::forget('home_slider_posts');
@@ -150,58 +137,20 @@ class PostObserver
         Cache::forget('categories_with_posts_count');
 
         // Очищаем Response Cache (Full Page Cache)
-        $responseCacheCleared = false;
         if (class_exists('\Spatie\ResponseCache\Facades\ResponseCache')) {
             \Spatie\ResponseCache\Facades\ResponseCache::clear();
-            $responseCacheCleared = true;
         }
 
-        // Очищаем nginx fastcgi_cache
+        // Очищаем nginx fastcgi_cache через триггер
         $this->clearNginxCache();
-
-        $duration = round((microtime(true) - $startTime) * 1000, 2);
-
-        \Log::info('PostObserver: Кеш успешно очищен', [
-            'post_id' => $post->id,
-            'categories_cleared' => $categoriesCleared,
-            'duration_ms' => $duration,
-            'response_cache_cleared' => $responseCacheCleared,
-        ]);
     }
 
     /**
-     * Очистка nginx fastcgi_cache напрямую через общий volume
+     * Очистка nginx fastcgi_cache через триггер-файл
+     * Скрипт на хосте мониторит файл и очищает кеш
      */
     protected function clearNginxCache(): void
     {
-        try {
-            $cachePath = '/var/cache/nginx-cache';
-            $filesDeleted = 0;
-
-            if (is_dir($cachePath)) {
-                // Рекурсивно удаляем все файлы кэша
-                $iterator = new \RecursiveIteratorIterator(
-                    new \RecursiveDirectoryIterator($cachePath, \RecursiveDirectoryIterator::SKIP_DOTS),
-                    \RecursiveIteratorIterator::CHILD_FIRST
-                );
-
-                foreach ($iterator as $file) {
-                    if ($file->isFile()) {
-                        @unlink($file->getRealPath());
-                        $filesDeleted++;
-                    }
-                }
-
-                \Log::info('Nginx cache cleared directly', [
-                    'cache_path' => $cachePath,
-                    'files_deleted' => $filesDeleted,
-                    'timestamp' => date('Y-m-d H:i:s')
-                ]);
-            } else {
-                \Log::warning('Nginx cache path not found', ['path' => $cachePath]);
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Failed to clear nginx cache: ' . $e->getMessage());
-        }
+        @file_put_contents(storage_path('cache-clear-trigger'), time());
     }
 }
