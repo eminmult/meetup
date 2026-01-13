@@ -1,0 +1,70 @@
+<?php
+
+return [
+    'resource' => [
+        'label' => 'Komanda üzvü',
+        'plural_label' => 'Komanda',
+        'navigation_label' => 'Komanda',
+        'navigation_group' => 'Kontent',
+    ],
+
+    'sections' => [
+        'photo' => 'Şəkil',
+        'contacts' => 'Əlaqə',
+        'social' => 'Sosial şəbəkələr',
+        'stats' => 'Statistika',
+        'stats_desc' => 'Nailiyyət göstəriciləri (təcrübə illəri, layihələr, mükafatlar və s.)',
+        'skills' => 'Əsas Səriştələr',
+        'skills_desc' => 'Mütəxəssisin ekspertizası və bacarıqları',
+        'settings' => 'Parametrlər',
+    ],
+
+    'fields' => [
+        'name' => 'Ad',
+        'position' => 'Vəzifə',
+        'tagline' => 'Şüar',
+        'tagline_placeholder' => '15 ildir ideyaları unudulmaz tədbirlərə çevirirəm',
+        'bio' => 'Bioqrafiya',
+        'email' => 'Email',
+        'phone' => 'Telefon',
+        'avatar' => 'Şəkil',
+        'social_links' => 'Sosial şəbəkələr',
+        'platform' => 'Platforma',
+        'url' => 'Link',
+        'website' => 'Veb-sayt',
+        'add_social' => 'Sosial şəbəkə əlavə et',
+        'stats' => 'Göstəricilər',
+        'stat_number' => 'Rəqəm',
+        'stat_label' => 'Etiket',
+        'stat_label_placeholder' => 'İllik təcrübə',
+        'add_stat' => 'Göstərici əlavə et',
+        'skills' => 'Səriştələr',
+        'skill_icon' => 'İkon',
+        'skill_title' => 'Başlıq',
+        'skill_description' => 'Təsvir',
+        'add_skill' => 'Səriştə əlavə et',
+        'sort_order' => 'Sıralama',
+        'is_leader' => 'Lider',
+        'is_leader_help' => 'Komanda səhifəsində "Rəhbərlik" bölməsində göstərilir',
+        'is_published' => 'Dərc edilib',
+    ],
+
+    'icons' => [
+        'layers' => 'Qatlar (Strategiya)',
+        'users' => 'İnsanlar (Liderlik)',
+        'globe' => 'Qlobus (Beynəlxalq)',
+        'star' => 'Ulduz (Kreativ)',
+        'target' => 'Hədəf (Məqsədlər)',
+        'award' => 'Mükafat',
+        'briefcase' => 'Çanta (Biznes)',
+        'heart' => 'Ürək (Ehtiras)',
+        'zap' => 'Şimşək (Enerji)',
+        'compass' => 'Kompas (İstiqamət)',
+    ],
+
+    'actions' => [
+        'page_settings' => 'Səhifə Parametrləri',
+        'edit_team_page' => 'Komanda Səhifəsi',
+        'edit_team_detail' => 'Komanda Ətraflı',
+    ],
+];

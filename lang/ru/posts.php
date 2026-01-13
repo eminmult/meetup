@@ -2,9 +2,9 @@
 
 return [
     'resource' => [
-        'label' => 'Пост',
-        'plural_label' => 'Опубликовано',
-        'navigation_label' => 'Опубликовано',
+        'label' => 'Статья',
+        'plural_label' => 'Блог',
+        'navigation_label' => 'Блог',
         'navigation_group' => 'Контент',
     ],
 
@@ -162,5 +162,11 @@ return [
             'post_being_edited' => 'Пост редактируется',
             'post_being_edited_by' => 'Этот пост сейчас редактирует :user',
         ],
+    ],
+
+    'actions' => [
+        'page_settings' => 'Настройки страниц',
+        'edit_blog_page' => 'Страница Блог',
+        'edit_blog_detail' => 'Детальная Статья',
     ],
 ];

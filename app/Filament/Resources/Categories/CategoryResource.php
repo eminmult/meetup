@@ -4,11 +4,14 @@ namespace App\Filament\Resources\Categories;
 
 use App\Filament\Resources\Categories\Pages\ManageCategories;
 use App\Models\Category;
+use App\Models\Language;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
@@ -21,6 +24,7 @@ use Filament\Tables\Table;
 
 class CategoryResource extends Resource
 {
+
     protected static ?string $model = Category::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolderOpen;
@@ -47,21 +51,31 @@ class CategoryResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
+        $languages = Language::where('is_active', true)->orderBy('sort_order')->get();
+
+        $tabs = [];
+        foreach ($languages as $language) {
+            $tabs[] = Tab::make("{$language->flag} {$language->native_name}")
+                ->schema([
+                    TextInput::make("translations.{$language->code}.name")
+                        ->label(__('common.fields.name')),
+                    TextInput::make("translations.{$language->code}.slug")
+                        ->label(__('common.fields.slug')),
+                    Textarea::make("translations.{$language->code}.description")
+                        ->label(__('common.fields.description'))
+                        ->rows(2),
+                ]);
+        }
+
         return $schema
             ->components([
-                TextInput::make('name')
-                    ->label(__('categories.fields.name'))
-                    ->required(),
-                TextInput::make('slug')
-                    ->label(__('categories.fields.slug'))
-                    ->required(),
+                Tabs::make('Translations')
+                    ->tabs($tabs)
+                    ->columnSpanFull(),
                 TextInput::make('color')
                     ->label(__('categories.fields.color'))
                     ->required()
                     ->default('#fc0067'),
-                Textarea::make('description')
-                    ->label(__('categories.fields.description'))
-                    ->columnSpanFull(),
                 Toggle::make('is_active')
                     ->label(__('categories.fields.is_active'))
                     ->required(),

@@ -22,10 +22,9 @@ return Application::configure(basePath: dirname(__DIR__))
                      Request::HEADER_X_FORWARDED_AWS_ELB
         );
 
-        // Редирект со старых DLE URL на новые (301)
-        $middleware->web(append: [
-            \App\Http\Middleware\RedirectOldDleUrls::class,
-            \App\Http\Middleware\AdminRobotsTxt::class,
+        // Middleware alias
+        $middleware->alias([
+            'setLocale' => \App\Http\Middleware\SetLocale::class,
         ]);
 
         // Отключаем CSRF для гостевых страниц (админка Filament защищена своим CSRF)
@@ -34,17 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withSchedule(function (Schedule $schedule): void {
-        // Генерация sitemap каждые 10 минут
-        $schedule->command('sitemap:generate --type=all')
-            ->everyTenMinutes()
-            ->withoutOverlapping()
-            ->runInBackground();
-
-        // Генерация llm.txt для AI-ботов каждые 30 минут
-        $schedule->command('llm:generate')
-            ->everyThirtyMinutes()
-            ->withoutOverlapping()
-            ->runInBackground();
+        // Scheduled tasks can be added here
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

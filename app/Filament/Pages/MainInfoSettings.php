@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Language;
 use App\Models\MainInfo;
 use App\Models\User;
 use BackedEnum;
@@ -15,6 +16,8 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 
@@ -62,34 +65,63 @@ class MainInfoSettings extends Page implements HasForms
 
     public function form(Schema $form): Schema
     {
+        $languages = Language::where('is_active', true)->orderBy('sort_order')->get();
+
+        $translationTabs = [];
+        foreach ($languages as $language) {
+            $translationTabs[] = Tab::make("{$language->flag} {$language->native_name}")
+                ->schema([
+                    TextInput::make("translations.{$language->code}.site_name")
+                        ->label(__('main-info.fields.site_name'))
+                        ->maxLength(255),
+
+                    Textarea::make("translations.{$language->code}.site_title")
+                        ->label(__('main-info.fields.site_title'))
+                        ->rows(2)
+                        ->maxLength(500),
+
+                    Textarea::make("translations.{$language->code}.site_description")
+                        ->label(__('main-info.fields.site_description'))
+                        ->rows(3)
+                        ->maxLength(1000),
+
+                    Textarea::make("translations.{$language->code}.address")
+                        ->label(__('main-info.fields.address'))
+                        ->rows(2)
+                        ->maxLength(500),
+
+                    Textarea::make("translations.{$language->code}.meta_title")
+                        ->label(__('main-info.fields.meta_title'))
+                        ->rows(2)
+                        ->maxLength(255),
+
+                    Textarea::make("translations.{$language->code}.meta_description")
+                        ->label(__('main-info.fields.meta_description'))
+                        ->rows(3)
+                        ->maxLength(500),
+
+                    Textarea::make("translations.{$language->code}.meta_keywords")
+                        ->label(__('main-info.fields.meta_keywords'))
+                        ->rows(2)
+                        ->maxLength(500),
+                ]);
+        }
+
         return $form
             ->components([
                 Section::make(__('main-info.sections.main'))
                     ->schema([
-                        TextInput::make('site_name')
-                            ->label(__('main-info.fields.site_name'))
-                            ->required()
-                            ->maxLength(255),
-
                         TextInput::make('site_url')
                             ->label(__('main-info.fields.site_url'))
                             ->url()
                             ->maxLength(255),
+                    ]),
 
-                        Textarea::make('site_title')
-                            ->label(__('main-info.fields.site_title'))
-                            ->rows(2)
-                            ->maxLength(500),
-
-                        Textarea::make('site_description')
-                            ->label(__('main-info.fields.site_description'))
-                            ->rows(3)
-                            ->maxLength(1000),
-
-                        Textarea::make('address')
-                            ->label(__('main-info.fields.address'))
-                            ->rows(2)
-                            ->maxLength(500),
+                Section::make(__('main-info.sections.content_by_languages'))
+                    ->schema([
+                        Tabs::make('Translations')
+                            ->tabs($translationTabs)
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make(__('main-info.sections.contact'))
@@ -123,7 +155,7 @@ class MainInfoSettings extends Page implements HasForms
                             ->label(__('main-info.fields.location'))
                             ->url()
                             ->maxLength(500)
-                            ->placeholder('https://maps.google.com/...'),
+                            ->placeholder(__('main-info.fields.location_placeholder')),
                     ])->columns(2),
 
                 Section::make(__('main-info.sections.advertising'))
@@ -148,25 +180,6 @@ class MainInfoSettings extends Page implements HasForms
                             ->defaultItems(0)
                             ->addActionLabel(__('main-info.actions.add_phone')),
                     ])->columns(2),
-
-                Section::make(__('main-info.sections.seo'))
-                    ->schema([
-                        Textarea::make('meta_title')
-                            ->label(__('main-info.fields.meta_title'))
-                            ->rows(2)
-                            ->maxLength(255),
-
-                        Textarea::make('meta_description')
-                            ->label(__('main-info.fields.meta_description'))
-                            ->rows(3)
-                            ->maxLength(500),
-
-                        Textarea::make('meta_keywords')
-                            ->label(__('main-info.fields.meta_keywords'))
-                            ->rows(2)
-                            ->maxLength(500)
-                            ->helperText(__('main-info.fields.meta_keywords_helper')),
-                    ]),
             ])
             ->statePath('data');
     }

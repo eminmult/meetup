@@ -25,51 +25,32 @@ class PostsTableColumns
                             . '</span>';
                     }
 
-                    // Красный кружок для постов в слайдере
-                    if ($record->show_in_slider) {
-                        $html .= '<span style="color: #dc2626; font-size: 16px; margin-right: 6px;">🔴</span>';
-                    }
-
                     $html .= htmlspecialchars($state);
 
                     return new \Illuminate\Support\HtmlString($html);
                 })
                 ->description(function ($record) {
-                    $html = '';
-
-                    // Типы постов
-                    if ($record->types->isNotEmpty()) {
-                        $badges = $record->types->map(function ($type) {
-                            return '<span style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; margin-right: 4px; white-space: nowrap;">'
-                                . htmlspecialchars($type->icon . ' ' . $type->name)
-                                . '</span>';
-                        })->join('');
-                        $html .= $badges;
-                    }
-
                     // Дата публикации
                     if ($record->published_at) {
                         $publishedDate = \Carbon\Carbon::parse($record->published_at);
                         $isToday = $publishedDate->isToday();
 
-                        if ($html) {
-                            $html .= '<br style="margin-bottom: 2px;">';
-                        }
-
                         if ($isToday) {
-                            // Если сегодня - показываем только время, выделенное
-                            $html .= '<span style="font-weight: 600; color: #059669; font-size: 13px;">'
+                            return new \Illuminate\Support\HtmlString(
+                                '<span style="font-weight: 600; color: #059669; font-size: 13px;">'
                                 . $publishedDate->format('H:i')
-                                . '</span>';
+                                . '</span>'
+                            );
                         } else {
-                            // Если не сегодня - показываем дату и время
-                            $html .= '<span style="color: #6b7280; font-size: 13px;">'
+                            return new \Illuminate\Support\HtmlString(
+                                '<span style="color: #6b7280; font-size: 13px;">'
                                 . $publishedDate->format('d.m.Y H:i')
-                                . '</span>';
+                                . '</span>'
+                            );
                         }
                     }
 
-                    return $html ? new \Illuminate\Support\HtmlString($html) : null;
+                    return null;
                 }),
             ImageColumn::make('preview')
                 ->label(__('posts.table.columns.featured_image'))

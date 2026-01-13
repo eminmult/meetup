@@ -35,6 +35,7 @@ class MainInfo extends Model
         'founder_image_version',
         'cooperation_text',
         'default_avatar',
+        'translations',
     ];
 
     protected $casts = [
@@ -42,7 +43,14 @@ class MainInfo extends Model
         'phones' => 'array',
         'reklam_phones' => 'array',
         'reklam_emails' => 'array',
+        'translations' => 'array',
     ];
+
+    public function getTranslation(string $field, ?string $locale = null): ?string
+    {
+        $locale = $locale ?? app()->getLocale();
+        return $this->translations[$locale][$field] ?? $this->{$field} ?? null;
+    }
 
     /**
      * Get the singleton instance (with caching)

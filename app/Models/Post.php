@@ -2,24 +2,25 @@
 
 namespace App\Models;
 
+use App\Models\Traits\HasLanguage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Scout\Searchable;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 class Post extends Model implements HasMedia
 {
-    use InteractsWithMedia, SoftDeletes, Searchable;
+    use InteractsWithMedia, Searchable, HasLanguage;
     protected $fillable = [
+        'language_id',
         'title',
         'slug',
-        'old_url',   // Старый URL из DLE для редиректов
+        'old_url',
         'content',
-        'excerpt',   // Краткое описание
+        'excerpt',
         'meta_title',
         'meta_description',
         'meta_keywords',
@@ -31,25 +32,21 @@ class Post extends Model implements HasMedia
         'is_featured',
         'is_published',
         'published_at',
-        'show_on_homepage',
-        'show_in_slider',
-        'show_in_video_section',
-        'show_in_types_block',
-        'show_in_important_today',
-        'is_hidden',
+        'translations',
     ];
 
     protected $casts = [
         'is_featured' => 'boolean',
         'is_published' => 'boolean',
         'published_at' => 'datetime',
-        'show_on_homepage' => 'boolean',
-        'show_in_slider' => 'boolean',
-        'show_in_video_section' => 'boolean',
-        'show_in_types_block' => 'boolean',
-        'show_in_important_today' => 'boolean',
-        'is_hidden' => 'boolean',
+        'translations' => 'array',
     ];
+
+    public function getTranslation(string $field, ?string $locale = null): ?string
+    {
+        $locale = $locale ?? app()->getLocale();
+        return $this->translations[$locale][$field] ?? $this->{$field} ?? null;
+    }
 
     public function category(): BelongsTo
     {
@@ -75,11 +72,6 @@ class Post extends Model implements HasMedia
         return $this->belongsTo(User::class, 'author_id');
     }
 
-    public function tags(): BelongsToMany
-    {
-        return $this->belongsToMany(Tag::class);
-    }
-
     public function galleries(): HasMany
     {
         return $this->hasMany(PostGallery::class);
@@ -93,11 +85,6 @@ class Post extends Model implements HasMedia
     public function lock(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(PostLock::class);
-    }
-
-    public function types(): BelongsToMany
-    {
-        return $this->belongsToMany(PostType::class, 'post_post_type');
     }
 
     public function scopePublished($query)
@@ -338,7 +325,7 @@ class Post extends Model implements HasMedia
     public function toSearchableArray(): array
     {
         // Загружаем связи если не загружены
-        $this->loadMissing(['category', 'categories', 'tags', 'author']);
+        $this->loadMissing(['category', 'categories', 'author']);
 
         $normalizer = \App\Services\AzerbaijaniSearchNormalizer::class;
 
@@ -370,10 +357,6 @@ class Post extends Model implements HasMedia
             'category_slug' => $this->category?->slug,
             'categories_names' => $this->categories->pluck('name')->join(', '),
             'categories_names_latin' => $normalizer::toLatinVariant($this->categories->pluck('name')->join(', ')),
-
-            // Теги
-            'tags' => $this->tags->pluck('name')->join(', '),
-            'tags_latin' => $normalizer::toLatinVariant($this->tags->pluck('name')->join(', ')),
 
             // Автор
             'author_name' => $this->author?->name,

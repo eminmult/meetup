@@ -5,10 +5,7 @@ namespace App\Providers;
 use App\Models\Post;
 use App\Models\Category;
 use App\Models\Setting;
-use App\Models\Tag;
 use App\Models\User;
-use App\Models\PostType;
-use App\Models\StaticPage;
 use App\Observers\PostObserver;
 use App\Observers\CategoryObserver;
 use App\Observers\SettingObserver;
@@ -43,10 +40,7 @@ class AppServiceProvider extends ServiceProvider
         // Регистрируем ActivityLogObserver для всех моделей
         Post::observe(ActivityLogObserver::class);
         Category::observe(ActivityLogObserver::class);
-        Tag::observe(ActivityLogObserver::class);
         User::observe(ActivityLogObserver::class);
-        PostType::observe(ActivityLogObserver::class);
-        StaticPage::observe(ActivityLogObserver::class);
 
         // Регистрируем MediaObserver для отслеживания изменений медиа (аватарки, галереи и т.д.)
         Media::observe(MediaObserver::class);

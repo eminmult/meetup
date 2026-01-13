@@ -25,17 +25,15 @@ class AdminPanelProvider extends PanelProvider
     {
         LanguageSwitch::configureUsing(function (LanguageSwitch $switch) {
             $switch
-                ->locales(['ru', 'az'])
+                ->locales(['ru', 'az', 'en'])
                 ->labels([
                     'ru' => 'Русский',
                     'az' => 'Azərbaycan',
+                    'en' => 'English',
                 ])
                 ->displayLocale('ru')
                 ->circular();
         });
-
-        // Устанавливаем русский язык по умолчанию для админки
-        app()->setLocale('ru');
     }
 
     public function panel(Panel $panel): Panel
@@ -43,8 +41,7 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
-            ->domain('edm.news24.az')
-            ->path('')
+            ->path('admin')
             ->login()
             ->sidebarCollapsibleOnDesktop()
             ->renderHook(

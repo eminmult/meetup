@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Filament\Resources\StaticPages\Pages;
+
+use App\Filament\Resources\StaticPages\PageResource;
+use Filament\Actions\CreateAction;
+use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Builder;
+
+class ListPages extends ListRecords
+{
+    protected static string $resource = PageResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make(),
+        ];
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        return parent::getTableQuery()->with(['media']);
+    }
+}

@@ -6,6 +6,7 @@ return [
 
     'sections' => [
         'main' => 'Əsas məlumat',
+        'content_by_languages' => 'Dillərə görə məzmun',
         'contact' => 'Əlaqə məlumatı',
         'advertising' => 'Reklam məlumatı',
         'seo' => 'SEO və Meta məlumat',
@@ -21,6 +22,7 @@ return [
         'phones' => 'Telefonlar',
         'fax' => 'Faks',
         'location' => 'Yeri (Google Maps)',
+        'location_placeholder' => 'https://maps.google.com/...',
         'reklam_emails' => 'Reklam üçün email',
         'reklam_phones' => 'Reklam üçün telefonlar',
         'meta_title' => 'Meta Title',

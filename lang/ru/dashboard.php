@@ -6,6 +6,9 @@ return [
 
     'date_filter' => [
         'title' => 'Фильтр по датам',
+        'from' => 'C',
+        'to' => 'По',
+        'date_placeholder' => 'дд.мм.гггг',
         'today' => 'Сегодня',
         'yesterday' => 'Вчера',
         'last_7_days' => '7 дней',

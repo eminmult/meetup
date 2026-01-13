@@ -94,10 +94,6 @@ class EditPost extends EditRecord
         $originalCategories = $this->record->categories()->pluck('categories.id')->toArray();
         session()->put('post_' . $this->record->id . '_original_categories', $originalCategories);
 
-        // Сохраняем текущие типы
-        $originalTypes = $this->record->types()->pluck('post_types.id')->toArray();
-        session()->put('post_' . $this->record->id . '_original_types', $originalTypes);
-
         // Сохраняем текущие виджеты
         $originalWidgets = $this->record->widgets()->get()->map(function($widget) {
             return [
@@ -155,17 +151,6 @@ class EditPost extends EditRecord
             $this->trackCategoryChanges($originalCategories, $currentCategories, $this->record);
         }
 
-        // Проверяем изменения типов
-        $originalTypes = session()->get('post_' . $this->record->id . '_original_types', []);
-        $currentTypes = $this->record->fresh()->types()->pluck('post_types.id')->toArray();
-
-        sort($originalTypes);
-        sort($currentTypes);
-
-        if ($originalTypes !== $currentTypes) {
-            $this->trackTypeChanges($originalTypes, $currentTypes, $this->record);
-        }
-
         // Проверяем изменения виджетов
         $originalWidgets = session()->get('post_' . $this->record->id . '_original_widgets', []);
         $currentWidgets = $this->record->fresh()->widgets()->get()->map(function($widget) {
@@ -184,7 +169,6 @@ class EditPost extends EditRecord
         // Удаляем из сессии
         session()->forget('post_' . $this->record->id . '_original_gallery');
         session()->forget('post_' . $this->record->id . '_original_categories');
-        session()->forget('post_' . $this->record->id . '_original_types');
         session()->forget('post_' . $this->record->id . '_original_widgets');
 
         // ВАЖНО: Очищаем кеш немедленно после обновления поста
@@ -351,81 +335,6 @@ class EditPost extends EditRecord
                 'properties' => [
                     'old' => ['categories' => implode(', ', $oldCategories)],
                     'new' => ['categories' => implode(', ', $newCategories)],
-                ],
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
-            ]);
-        }
-    }
-
-    protected function trackTypeChanges(array $originalTypeIds, array $currentTypeIds, $record): void
-    {
-        $user = Auth::user();
-        if (!$user) {
-            return;
-        }
-
-        if ($originalTypeIds === $currentTypeIds) {
-            return; // Нет изменений
-        }
-
-        // Получаем названия типов
-        $allTypeIds = array_unique(array_merge($originalTypeIds, $currentTypeIds));
-        $types = \App\Models\PostType::whereIn('id', $allTypeIds)->pluck('name', 'id');
-
-        $oldTypes = [];
-        foreach ($originalTypeIds as $id) {
-            $oldTypes[] = $types[$id] ?? "ID: $id";
-        }
-
-        $newTypes = [];
-        foreach ($currentTypeIds as $id) {
-            $newTypes[] = $types[$id] ?? "ID: $id";
-        }
-
-        // Проверяем, был ли только что создан лог для этого поста (в течение последних 10 секунд)
-        $recentLog = ActivityLog::where('subject_type', get_class($record))
-            ->where('subject_id', $record->getKey())
-            ->where('event', 'updated')
-            ->where('causer_id', $user->id)
-            ->where('created_at', '>=', now()->subSeconds(10))
-            ->orderBy('created_at', 'desc')
-            ->first();
-
-        if ($recentLog) {
-            // Обновляем существующий лог, добавляя изменения типов
-            $properties = $recentLog->properties ?? [];
-
-            $properties['old']['types'] = implode(', ', $oldTypes);
-            $properties['new']['types'] = implode(', ', $newTypes);
-
-            // Обновляем описание, добавляя информацию о типах
-            $description = $recentLog->description;
-            $includingText = __('activity-logs.descriptions.including_types');
-            if (strpos($description, $includingText) === false) {
-                $description .= $includingText;
-            }
-
-            $recentLog->update([
-                'properties' => $properties,
-                'description' => $description,
-            ]);
-        } else {
-            // Создаем новый лог только для изменений типов
-            ActivityLog::create([
-                'log_name' => 'post',
-                'description' => __('activity-logs.descriptions.post_types_changed', [
-                    'model' => 'Post',
-                    'name' => $record->title ?? $record->id,
-                ]),
-                'event' => 'updated',
-                'causer_id' => $user->id,
-                'causer_type' => get_class($user),
-                'subject_type' => get_class($record),
-                'subject_id' => $record->getKey(),
-                'properties' => [
-                    'old' => ['types' => implode(', ', $oldTypes)],
-                    'new' => ['types' => implode(', ', $newTypes)],
                 ],
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),

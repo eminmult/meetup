@@ -1,0 +1,1 @@
+@livewire('content-language-switcher')

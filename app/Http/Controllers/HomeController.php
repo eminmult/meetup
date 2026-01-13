@@ -3,11 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
-use App\Models\Config;
 use App\Models\Post;
 use App\Models\Setting;
-use App\Models\StaticPage;
-use App\Services\AzerbaijaniSearchNormalizer;
+use App\Models\Page;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -22,59 +20,6 @@ class HomeController extends Controller
                 ->get();
         });
 
-        // Посты для слайдера - кеш 1 год (инвалидация через Observer)
-        $sliderPosts = Cache::remember('home_slider_posts', 31536000, function() {
-            return Post::published()
-                ->where('show_in_slider', true)
-                ->with(['categories', 'category', 'author'])
-                ->latest('published_at')
-                ->take(Setting::get('slider_posts_count', 5))
-                ->get();
-        });
-
-        // Важные новости сегодня - кеш 1 год (инвалидация через Observer)
-        $importantPosts = Cache::remember('home_important_posts', 31536000, function() {
-            return Post::published()
-                ->where('show_in_important_today', true)
-                ->with(['categories', 'category', 'author'])
-                ->latest('published_at')
-                ->take(Setting::get('trending_posts_count', 6))
-                ->get();
-        });
-
-        // Главные новости для главного блока - кеш 1 год (инвалидация через Observer)
-        $mainFeaturedPosts = Cache::remember('home_main_featured_posts', 31536000, function() {
-            return Post::published()
-                ->where('show_in_main_featured', true)
-                ->with(['categories', 'category', 'author'])
-                ->latest('published_at')
-                ->take(Setting::get('slider_posts_count', 5))
-                ->get();
-        });
-
-        // Видео посты для youtube-carousel - кеш 1 год (инвалидация через Observer)
-        $videoPosts = Cache::remember('home_video_posts', 31536000, function() {
-            return Post::published()
-                ->where('show_in_video_section', true)
-                ->with(['categories', 'category', 'author', 'types'])
-                ->latest('published_at')
-                ->take(6)
-                ->get();
-        });
-
-        // Фото посты - кеш 1 год (инвалидация через Observer)
-        $photoPosts = Cache::remember('home_photo_posts', 31536000, function() {
-            return Post::published()
-                ->where('show_in_types_block', true)
-                ->whereHas('types', function($query) {
-                    $query->where('slug', 'photo');
-                })
-                ->with(['categories', 'category', 'author', 'types'])
-                ->latest('published_at')
-                ->take(6)
-                ->get();
-        });
-
         // Последние посты - кешируем на 1 год с учетом страницы (инвалидация через Observer)
         $page = request()->get('page', 1);
         $latestPosts = Cache::remember("home_latest_posts_page_{$page}", 31536000, function() {
@@ -84,7 +29,7 @@ class HomeController extends Controller
                 ->paginate(Setting::get('home_posts_count', 15));
         });
 
-        return view('home', compact('categories', 'sliderPosts', 'importantPosts', 'mainFeaturedPosts', 'videoPosts', 'photoPosts', 'latestPosts'));
+        return view('home', compact('categories', 'latestPosts'));
     }
 
     public function category($slug)
@@ -108,17 +53,7 @@ class HomeController extends Controller
                 ->paginate(Setting::get('category_posts_count', 12));
         });
 
-        // Кешируем количество постов за сегодня на 1 день (обновляется каждый день автоматически)
-        $todayPostsCount = Cache::remember("category_{$category->id}_today_posts_count", 86400, function() use ($category) {
-            return Post::published()
-                ->whereHas('categories', function($q) use ($category) {
-                    $q->where('categories.id', $category->id);
-                })
-                ->where('published_at', '>=', now()->startOfDay())
-                ->count();
-        });
-
-        return view('category', compact('category', 'posts', 'todayPostsCount'));
+        return view('category', compact('category', 'posts'));
     }
 
     public function show($category, $slug)
@@ -130,97 +65,33 @@ class HomeController extends Controller
                 ->whereHas('categories', function($q) use ($category) {
                     $q->where('categories.slug', $category);
                 })
-                ->with(['categories', 'author', 'tags', 'widgets'])
+                ->with(['categories', 'author', 'widgets'])
                 ->firstOrFail();
         });
 
         // Счетчик просмотров обновляется отдельно (не кешируется)
         $post->incrementViews();
 
-        // Категории уже кешируются в ViewServiceProvider, но для единообразия
+        // Категории
         $categories = Cache::remember('all_categories', 3600, function() {
             return Category::where('is_active', true)
                 ->orderBy('order')
                 ->get();
         });
 
-        // Improved related posts algorithm (Internal Linking Optimization)
-        $relatedPosts = Cache::remember("post_{$post->id}_related_improved", 1800, function() use ($post) {
+        // Похожие посты из той же категории
+        $relatedPosts = Cache::remember("post_{$post->id}_related", 1800, function() use ($post) {
             $categoryIds = $post->categories->pluck('id');
-            $tagIds = $post->tags->pluck('id');
-            
-            // Priority 1: Same category + same tags (most relevant)
-            $priority1 = Post::published()
+
+            return Post::published()
                 ->whereHas('categories', function($q) use ($categoryIds) {
                     $q->whereIn('categories.id', $categoryIds);
                 })
-                ->whereHas('tags', function($q) use ($tagIds) {
-                    $q->whereIn('tags.id', $tagIds);
-                })
                 ->where('id', '!=', $post->id)
+                ->with(['category', 'author'])
                 ->latest('published_at')
-                ->take(3)
+                ->take(Setting::get('related_posts_count', 6))
                 ->get();
-            
-            // Priority 2: Same category (if we need more)
-            if ($priority1->count() < 3) {
-                $priority2 = Post::published()
-                    ->whereHas('categories', function($q) use ($categoryIds) {
-                        $q->whereIn('categories.id', $categoryIds);
-                    })
-                    ->where('id', '!=', $post->id)
-                    ->whereNotIn('id', $priority1->pluck('id'))
-                    ->latest('published_at')
-                    ->take(3 - $priority1->count())
-                    ->get();
-                
-                $priority1 = $priority1->merge($priority2);
-            }
-            
-            // Priority 3: Same tags (if we still need more)
-            if ($priority1->count() < 6 && $tagIds->isNotEmpty()) {
-                $priority3 = Post::published()
-                    ->whereHas('tags', function($q) use ($tagIds) {
-                        $q->whereIn('tags.id', $tagIds);
-                    })
-                    ->where('id', '!=', $post->id)
-                    ->whereNotIn('id', $priority1->pluck('id'))
-                    ->latest('published_at')
-                    ->take(6 - $priority1->count())
-                    ->get();
-                
-                $priority1 = $priority1->merge($priority3);
-            }
-            
-            // Priority 4: Same author (if we still need more)
-            if ($priority1->count() < 6 && $post->author_id) {
-                $priority4 = Post::published()
-                    ->where('author_id', $post->author_id)
-                    ->where('id', '!=', $post->id)
-                    ->whereNotIn('id', $priority1->pluck('id'))
-                    ->latest('published_at')
-                    ->take(6 - $priority1->count())
-                    ->get();
-                
-                $priority1 = $priority1->merge($priority4);
-            }
-            
-            // Priority 5: Recent posts from same category (fallback)
-            if ($priority1->count() < 6) {
-                $priority5 = Post::published()
-                    ->whereHas('categories', function($q) use ($categoryIds) {
-                        $q->whereIn('categories.id', $categoryIds);
-                    })
-                    ->where('id', '!=', $post->id)
-                    ->whereNotIn('id', $priority1->pluck('id'))
-                    ->latest('published_at')
-                    ->take(6 - $priority1->count())
-                    ->get();
-                
-                $priority1 = $priority1->merge($priority5);
-            }
-            
-            return $priority1->take(Setting::get('related_posts_count', 6));
         });
 
         return view('post', compact('post', 'categories', 'relatedPosts'));
@@ -243,16 +114,12 @@ class HomeController extends Controller
 
         // Используем Meilisearch через Scout для быстрого поиска
         if (!empty($query)) {
-            // Ищем по оригинальному запросу
-            // Meilisearch сам найдет в оригинальных и латинизированных полях
             $posts = Post::search($query)
                 ->query(function($builder) {
-                    // Загружаем связи для найденных постов
                     $builder->with(['category', 'author']);
                 })
                 ->paginate(Setting::get('search_posts_count', 12));
         } else {
-            // Если запрос пустой, показываем последние посты
             $posts = Post::published()
                 ->with(['category', 'author'])
                 ->latest('published_at')
@@ -270,21 +137,18 @@ class HomeController extends Controller
 
     public function about()
     {
-        // Кешируем статическую страницу "О нас" на 7 дней (604800 секунд)
-        $page = Cache::remember('static_page_haqqimizda', 604800, function() {
-            return StaticPage::active()
-                ->where('slug', 'haqqimizda')
+        $page = Cache::remember('page_about', 604800, function() {
+            return Page::published()
+                ->where('slug', 'about')
                 ->firstOrFail();
         });
 
-        // Категории уже кешируются
         $categories = Cache::remember('all_categories', 3600, function() {
             return Category::where('is_active', true)
                 ->orderBy('order')
                 ->get();
         });
 
-        // Кешируем авторов на 24 часа (86400 секунд)
         $authors = Cache::remember('about_page_authors', 86400, function() {
             return \App\Models\User::where('role', 'author')
                 ->where('is_active', true)
@@ -297,14 +161,12 @@ class HomeController extends Controller
 
     public function contact()
     {
-        // Кешируем статическую страницу "Контакты" на 1 час
-        $page = Cache::remember('static_page_elaqe', 3600, function() {
-            return StaticPage::active()
-                ->where('slug', 'elaqe')
+        $page = Cache::remember('page_contacts', 3600, function() {
+            return Page::published()
+                ->where('slug', 'contacts')
                 ->firstOrFail();
         });
 
-        // Категории уже кешируются
         $categories = Cache::remember('all_categories', 3600, function() {
             return Category::where('is_active', true)
                 ->orderBy('order')

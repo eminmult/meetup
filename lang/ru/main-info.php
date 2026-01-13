@@ -6,6 +6,7 @@ return [
 
     'sections' => [
         'main' => 'Основная информация',
+        'content_by_languages' => 'Контент по языкам',
         'contact' => 'Контактная информация',
         'advertising' => 'Рекламная информация',
         'seo' => 'SEO и Meta информация',
@@ -21,6 +22,7 @@ return [
         'phones' => 'Телефоны',
         'fax' => 'Факс',
         'location' => 'Локация (Google Maps)',
+        'location_placeholder' => 'https://maps.google.com/...',
         'reklam_emails' => 'Email для рекламы',
         'reklam_phones' => 'Телефоны для рекламы',
         'meta_title' => 'Meta Title',

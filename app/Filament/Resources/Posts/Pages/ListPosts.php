@@ -3,9 +3,11 @@
 namespace App\Filament\Resources\Posts\Pages;
 
 use App\Filament\Resources\Posts\PostResource;
+use App\Models\Page;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListPosts extends ListRecords
@@ -16,24 +18,37 @@ class ListPosts extends ListRecords
     {
         return [
             CreateAction::make(),
+            ActionGroup::make([
+                Action::make('edit_blog_page')
+                    ->label(__('posts.actions.edit_blog_page'))
+                    ->icon('heroicon-o-document-text')
+                    ->url(function () {
+                        $page = Page::where('template', 'blog-page')->first();
+                        if ($page) {
+                            return route('filament.admin.resources.pages.edit', ['record' => $page]);
+                        }
+                        return route('filament.admin.resources.pages.create');
+                    }),
+                Action::make('edit_blog_detail')
+                    ->label(__('posts.actions.edit_blog_detail'))
+                    ->icon('heroicon-o-newspaper')
+                    ->url(function () {
+                        $page = Page::where('template', 'blog-detail')->first();
+                        if ($page) {
+                            return route('filament.admin.resources.pages.edit', ['record' => $page]);
+                        }
+                        return route('filament.admin.resources.pages.create');
+                    }),
+            ])
+                ->label(__('posts.actions.page_settings'))
+                ->icon('heroicon-o-cog-6-tooth')
+                ->button()
+                ->color('gray'),
         ];
     }
 
     protected function getTableQuery(): Builder
     {
         return parent::getTableQuery()->with(['media', 'categories', 'category', 'lock.user']);
-    }
-
-    public function getTabs(): array
-    {
-        return [
-            'all' => Tab::make(__('posts.tabs.all')),
-            'published' => Tab::make(__('posts.tabs.published'))
-                ->modifyQueryUsing(fn (Builder $query) => $query->published()),
-            'scheduled' => Tab::make(__('posts.tabs.scheduled'))
-                ->modifyQueryUsing(fn (Builder $query) => $query->scheduled()),
-            'unpublished' => Tab::make(__('posts.tabs.unpublished'))
-                ->modifyQueryUsing(fn (Builder $query) => $query->unpublished()),
-        ];
     }
 }

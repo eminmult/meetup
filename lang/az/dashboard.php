@@ -6,6 +6,9 @@ return [
 
     'date_filter' => [
         'title' => 'Tarix filtri',
+        'from' => 'Başlanğıc',
+        'to' => 'Son',
+        'date_placeholder' => 'gg.aa.iiii',
         'today' => 'Bu gün',
         'yesterday' => 'Dünən',
         'last_7_days' => '7 gün',

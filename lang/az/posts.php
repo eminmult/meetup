@@ -163,4 +163,10 @@ return [
             'post_being_edited_by' => 'Bu postu hazırda :user redaktə edir',
         ],
     ],
+
+    'actions' => [
+        'page_settings' => 'Səhifə Parametrləri',
+        'edit_blog_page' => 'Bloq Səhifəsi',
+        'edit_blog_detail' => 'Məqalə Ətraflı',
+    ],
 ];

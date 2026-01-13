@@ -1,0 +1,70 @@
+<?php
+
+return [
+    'resource' => [
+        'label' => 'Team Member',
+        'plural_label' => 'Team',
+        'navigation_label' => 'Team',
+        'navigation_group' => 'Content',
+    ],
+
+    'sections' => [
+        'photo' => 'Photo',
+        'contacts' => 'Contacts',
+        'social' => 'Social Networks',
+        'stats' => 'Statistics',
+        'stats_desc' => 'Achievement indicators (years of experience, projects, awards, etc.)',
+        'skills' => 'Key Competencies',
+        'skills_desc' => 'Expertise and skills of the specialist',
+        'settings' => 'Settings',
+    ],
+
+    'fields' => [
+        'name' => 'Name',
+        'position' => 'Position',
+        'tagline' => 'Tagline',
+        'tagline_placeholder' => 'Turning ideas into unforgettable events for 15 years',
+        'bio' => 'Biography',
+        'email' => 'Email',
+        'phone' => 'Phone',
+        'avatar' => 'Photo',
+        'social_links' => 'Social Networks',
+        'platform' => 'Platform',
+        'url' => 'URL',
+        'website' => 'Website',
+        'add_social' => 'Add social network',
+        'stats' => 'Statistics',
+        'stat_number' => 'Number',
+        'stat_label' => 'Label',
+        'stat_label_placeholder' => 'Years of experience',
+        'add_stat' => 'Add statistic',
+        'skills' => 'Competencies',
+        'skill_icon' => 'Icon',
+        'skill_title' => 'Title',
+        'skill_description' => 'Description',
+        'add_skill' => 'Add competency',
+        'sort_order' => 'Sort order',
+        'is_leader' => 'Leader',
+        'is_leader_help' => 'Displayed in the "Leadership" section on the team page',
+        'is_published' => 'Published',
+    ],
+
+    'icons' => [
+        'layers' => 'Layers (Strategy)',
+        'users' => 'People (Leadership)',
+        'globe' => 'Globe (International)',
+        'star' => 'Star (Creative)',
+        'target' => 'Target (Goals)',
+        'award' => 'Award',
+        'briefcase' => 'Briefcase (Business)',
+        'heart' => 'Heart (Passion)',
+        'zap' => 'Lightning (Energy)',
+        'compass' => 'Compass (Direction)',
+    ],
+
+    'actions' => [
+        'page_settings' => 'Page Settings',
+        'edit_team_page' => 'Team Page',
+        'edit_team_detail' => 'Team Detail',
+    ],
+];

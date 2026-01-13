@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Posts\Schemas;
 
 use App\Forms\Components\TinyMCEEditor;
+use App\Models\Language;
 use App\Models\Post;
 use App\Models\PostWidget;
 use Filament\Forms\Components\DateTimePicker;
@@ -18,6 +19,8 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ViewField;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Support\HtmlString;
@@ -123,63 +126,71 @@ class PostForm
 
     public static function configure(Schema $schema): Schema
     {
+        $languages = Language::where('is_active', true)->orderBy('sort_order')->get();
+
+        $contentTabs = [];
+        foreach ($languages as $language) {
+            $contentTabs[] = Tab::make("{$language->flag} {$language->native_name}")
+                ->schema([
+                    TextInput::make("translations.{$language->code}.title")
+                        ->label(__('common.fields.title'))
+                        ->maxLength(255)
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(function ($set, ?string $state, $get) use ($language) {
+                            // Generate slug from title
+                            if ($state && !$get("translations.{$language->code}.slug")) {
+                                $cleanState = preg_replace('/[?!.,;:\'\"«»""„\(\)\[\]{}]/', '', $state ?? '');
+                                $slug = Str::slug($cleanState);
+                                $set("translations.{$language->code}.slug", $slug);
+                            }
+                        })
+                        ->columnSpanFull(),
+                    TextInput::make("translations.{$language->code}.slug")
+                        ->label(__('common.fields.slug'))
+                        ->maxLength(255)
+                        ->columnSpanFull(),
+                    RichEditor::make("translations.{$language->code}.content")
+                        ->label(__('common.fields.content'))
+                        ->columnSpanFull()
+                        ->fileAttachmentsDisk('public')
+                        ->fileAttachmentsDirectory('post-images')
+                        ->fileAttachmentsVisibility('public')
+                        ->toolbarButtons([
+                            'attachFiles',
+                            'bold',
+                            'italic',
+                            'underline',
+                            'strike',
+                            'link',
+                            'h2',
+                            'h3',
+                            'bulletList',
+                            'orderedList',
+                            'blockquote',
+                            'codeBlock',
+                        ]),
+                    TextInput::make("translations.{$language->code}.meta_title")
+                        ->label(__('common.fields.meta_title'))
+                        ->maxLength(255)
+                        ->columnSpanFull(),
+                    Textarea::make("translations.{$language->code}.meta_description")
+                        ->label(__('common.fields.meta_description'))
+                        ->rows(2)
+                        ->maxLength(500)
+                        ->columnSpanFull(),
+                ]);
+        }
+
         return $schema
             ->columns(1)
             ->components([
-                Section::make(__('posts.sections.basic_info'))
+                Section::make(__('common.sections.content_by_languages'))
                     ->schema([
-                        TextInput::make('title')
-                            ->label(__('posts.fields.title'))
-                            ->required()
-                            ->maxLength(255)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function ($set, ?string $state, $get) {
-                                if (!$get('slug')) {
-                                    // Remove special characters before generating slug
-                                    $cleanState = preg_replace('/[?!.,;:\'\"«»""„\(\)\[\]{}]/', '', $state ?? '');
-                                    $slug = Str::slug($cleanState);
-
-                                    // Make slug unique
-                                    $originalSlug = $slug;
-                                    $counter = 1;
-
-                                    while (\App\Models\Post::where('slug', $slug)->exists()) {
-                                        $slug = $originalSlug . '-' . $counter;
-                                        $counter++;
-                                    }
-
-                                    $set('slug', $slug);
-                                }
-                            })
+                        Tabs::make('ContentTranslations')
+                            ->tabs($contentTabs)
                             ->columnSpanFull(),
-                        TextInput::make('slug')
-                            ->label(__('posts.fields.slug'))
-                            ->required()
-                            ->maxLength(255)
-                            ->unique(ignoreRecord: true)
-                            ->columnSpanFull(),
-                        RichEditor::make('content')
-                            ->label(__('posts.fields.content'))
-                            ->required()
-                            ->columnSpanFull()
-                            ->fileAttachmentsDisk('public')
-                            ->fileAttachmentsDirectory('post-images')
-                            ->fileAttachmentsVisibility('public')
-                            ->toolbarButtons([
-                                'attachFiles',
-                                'bold',
-                                'italic',
-                                'underline',
-                                'strike',
-                                'link',
-                                'h2',
-                                'h3',
-                                'bulletList',
-                                'orderedList',
-                                'blockquote',
-                                'codeBlock',
-                            ]),
                     ]),
+
 
                 Section::make(__('posts.sections.gallery'))
                     ->schema([
@@ -205,7 +216,7 @@ class PostForm
                     ])
                     ->columns(1),
 
-                Section::make(__('posts.sections.category_author'))
+                Section::make(__('posts.sections.category'))
                     ->schema([
                         CheckboxList::make('categories')
                             ->label(__('posts.fields.categories'))
@@ -215,37 +226,6 @@ class PostForm
                             ->gridDirection('row')
                             ->bulkToggleable()
                             ->helperText(__('posts.fields.categories_helper'))
-                            ->columnSpanFull(),
-                        Select::make('types')
-                            ->label(__('posts.fields.types'))
-                            ->relationship('types', 'name', fn ($query) => $query->orderBy('order', 'asc'))
-                            ->multiple()
-                            ->searchable()
-                            ->preload()
-                            ->helperText(__('posts.fields.types_helper'))
-                            ->columnSpanFull(),
-                        Select::make('author_id')
-                            ->label(__('posts.fields.author'))
-                            ->relationship('author', 'name', fn ($query) => $query->where('is_active', true))
-                            ->searchable()
-                            ->preload()
-                            ->createOptionForm([
-                                TextInput::make('name')
-                                    ->label(__('posts.fields.name'))
-                                    ->required(),
-                            ])
-                            ->columnSpanFull(),
-                        Select::make('tags')
-                            ->label(__('posts.fields.tags'))
-                            ->relationship('tags', 'name')
-                            ->multiple()
-                            ->searchable()
-                            ->preload()
-                            ->createOptionForm([
-                                TextInput::make('name')
-                                    ->label(__('posts.fields.name'))
-                                    ->required(),
-                            ])
                             ->columnSpanFull(),
                     ]),
 
@@ -378,62 +358,8 @@ class PostForm
                             ->displayFormat('d M Y, H:i')
                             ->helperText(__('posts.fields.published_at_helper'))
                             ->columnSpanFull(),
-                        Toggle::make('show_on_homepage')
-                            ->label(__('posts.fields.show_on_homepage'))
-                            ->default(true)
-                            ->helperText(__('posts.fields.show_on_homepage_helper'))
-                            ->columnSpanFull(),
-                        Toggle::make('show_in_slider')
-                            ->label(__('posts.fields.show_in_slider'))
-                            ->default(false)
-                            ->helperText(__('posts.fields.show_in_slider_helper'))
-                            ->columnSpanFull(),
-                        Toggle::make('show_in_video_section')
-                            ->label(__('posts.fields.show_in_video_section'))
-                            ->default(false)
-                            ->helperText(__('posts.fields.show_in_video_section_helper'))
-                            ->columnSpanFull(),
-                        Toggle::make('show_in_types_block')
-                            ->label(__('posts.fields.show_in_types_block'))
-                            ->default(false)
-                            ->helperText(__('posts.fields.show_in_types_block_helper'))
-                            ->columnSpanFull(),
-                        Toggle::make('show_in_important_today')
-                            ->label(__('posts.fields.show_in_important_today'))
-                            ->default(false)
-                            ->helperText(__('posts.fields.show_in_important_today_helper'))
-                            ->columnSpanFull(),
-                        Toggle::make('show_in_main_featured')
-                            ->label(__('posts.fields.show_in_main_featured'))
-                            ->default(false)
-                            ->helperText(__('posts.fields.show_in_main_featured_helper'))
-                            ->columnSpanFull(),
-                        Toggle::make('is_hidden')
-                            ->label(__('posts.fields.is_hidden'))
-                            ->default(false)
-                            ->helperText(__('posts.fields.is_hidden_helper'))
-                            ->columnSpanFull(),
                     ]),
 
-                Section::make(__('posts.sections.seo_meta'))
-                    ->schema([
-                        TextInput::make('meta_title')
-                            ->label(__('posts.fields.meta_title'))
-                            ->maxLength(255)
-                            ->helperText(__('posts.fields.meta_title_helper'))
-                            ->columnSpanFull(),
-                        Textarea::make('meta_description')
-                            ->label(__('posts.fields.meta_description'))
-                            ->rows(3)
-                            ->maxLength(500)
-                            ->helperText(__('posts.fields.meta_description_helper'))
-                            ->columnSpanFull(),
-                        Textarea::make('meta_keywords')
-                            ->label(__('posts.fields.meta_keywords'))
-                            ->rows(2)
-                            ->helperText(__('posts.fields.meta_keywords_helper'))
-                            ->columnSpanFull(),
-                    ]),
             ]);
     }
 }
