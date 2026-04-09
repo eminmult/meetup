@@ -120,14 +120,6 @@ class User extends Authenticatable implements FilamentUser, HasMedia
     }
 
     /**
-     * Get route key name for URL binding
-     */
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
-    }
-
-    /**
      * Register media collections
      */
     public function registerMediaCollections(): void

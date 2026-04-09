@@ -10,6 +10,39 @@ class Service extends Model implements HasMedia
 {
     use InteractsWithMedia;
 
+    protected static function booted(): void
+    {
+        static::saving(function (Service $service) {
+            // Auto-fill base columns from translations if empty
+            if (empty($service->title) && !empty($service->translations)) {
+                foreach (['az', 'ru', 'en'] as $lang) {
+                    if (!empty($service->translations[$lang]['title'])) {
+                        $service->title = $service->translations[$lang]['title'];
+                        break;
+                    }
+                }
+            }
+
+            if (empty($service->slug) && !empty($service->translations)) {
+                foreach (['az', 'ru', 'en'] as $lang) {
+                    if (!empty($service->translations[$lang]['slug'])) {
+                        $service->slug = $service->translations[$lang]['slug'];
+                        break;
+                    }
+                }
+            }
+
+            if (empty($service->content) && !empty($service->translations)) {
+                foreach (['az', 'ru', 'en'] as $lang) {
+                    if (!empty($service->translations[$lang]['content'])) {
+                        $service->content = $service->translations[$lang]['content'];
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
     protected $fillable = [
         'title',
         'slug',
@@ -70,10 +103,45 @@ class Service extends Model implements HasMedia
         return $this->translations[$locale]['title'] ?? $value ?? null;
     }
 
+    public function getSlugAttribute($value): string
+    {
+        $locale = app()->getLocale();
+        return $this->translations[$locale]['slug'] ?? $value ?? '';
+    }
+
+    public function getRawSlug(): ?string
+    {
+        return $this->attributes['slug'] ?? null;
+    }
+
+    public function getContentAttribute($value): ?string
+    {
+        $locale = app()->getLocale();
+        return $this->translations[$locale]['content'] ?? $value ?? null;
+    }
+
+    public function getExcerptAttribute($value): ?string
+    {
+        $locale = app()->getLocale();
+        return $this->translations[$locale]['excerpt'] ?? $value ?? null;
+    }
+
+    public function getMetaTitleAttribute($value): ?string
+    {
+        $locale = app()->getLocale();
+        return $this->translations[$locale]['meta_title'] ?? $value ?? null;
+    }
+
+    public function getMetaDescriptionAttribute($value): ?string
+    {
+        $locale = app()->getLocale();
+        return $this->translations[$locale]['meta_description'] ?? $value ?? null;
+    }
+
     public function getDescriptionAttribute(): ?string
     {
         $locale = app()->getLocale();
-        return $this->translations[$locale]['description'] ?? $this->content ?? null;
+        return $this->translations[$locale]['content'] ?? $this->attributes['content'] ?? null;
     }
 
     public function registerMediaCollections(): void
@@ -132,11 +200,6 @@ class Service extends Model implements HasMedia
         return $firstMedia ? $firstMedia->getUrl('medium') : null;
     }
 
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
-    }
-
     public function getPriceDisplayAttribute(): string
     {
         if ($this->price_text) {
@@ -150,7 +213,7 @@ class Service extends Model implements HasMedia
 
     public function getUrlAttribute()
     {
-        $frontendUrl = config('app.frontend_url', config('app.url'));
-        return $frontendUrl . '/services/' . $this->slug;
+        $locale = app()->getLocale();
+        return route('service.show', ['locale' => $locale, 'slug' => $this->slug]);
     }
 }

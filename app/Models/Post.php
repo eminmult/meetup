@@ -14,6 +14,62 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 class Post extends Model implements HasMedia
 {
     use InteractsWithMedia, Searchable, HasLanguage;
+
+    protected static function booted(): void
+    {
+        static::saving(function (Post $post) {
+            // Auto-fill base columns from translations if empty
+            if (!empty($post->translations) && is_array($post->translations)) {
+                $translations = $post->translations;
+
+                // Generate slugs for all languages that have title but no slug
+                foreach (['az', 'en', 'ru'] as $locale) {
+                    if (!empty($translations[$locale]['title']) && empty($translations[$locale]['slug'])) {
+                        $translations[$locale]['slug'] = \Illuminate\Support\Str::slug($translations[$locale]['title']);
+                    }
+                }
+                $post->translations = $translations;
+
+                // Get first available translation for base fields
+                $firstTranslation = null;
+                foreach (['az', 'en', 'ru'] as $locale) {
+                    if (!empty($translations[$locale]['title'])) {
+                        $firstTranslation = $translations[$locale];
+                        break;
+                    }
+                }
+
+                if ($firstTranslation) {
+                    if (empty($post->attributes['title'])) {
+                        $post->attributes['title'] = $firstTranslation['title'] ?? '';
+                    }
+                    if (empty($post->attributes['slug'])) {
+                        $post->attributes['slug'] = $firstTranslation['slug'] ?? \Illuminate\Support\Str::slug($firstTranslation['title'] ?? '');
+                    }
+                    if (empty($post->attributes['content'])) {
+                        $post->attributes['content'] = $firstTranslation['content'] ?? '';
+                    }
+                }
+            }
+
+            // Ensure base slug is unique
+            if (!empty($post->attributes['slug'])) {
+                $originalSlug = $post->attributes['slug'];
+                $counter = 1;
+                while (Post::where('slug', $post->attributes['slug'])->where('id', '!=', $post->id ?? 0)->exists()) {
+                    $post->attributes['slug'] = $originalSlug . '-' . $counter++;
+                }
+            }
+
+            // Clear cache
+            \Illuminate\Support\Facades\Cache::forget('menu_categories');
+        });
+
+        static::deleted(function () {
+            \Illuminate\Support\Facades\Cache::forget('menu_categories');
+        });
+    }
+
     protected $fillable = [
         'language_id',
         'title',
@@ -33,6 +89,7 @@ class Post extends Model implements HasMedia
         'is_published',
         'published_at',
         'translations',
+        'show_in_main_featured',
     ];
 
     protected $casts = [
@@ -45,7 +102,39 @@ class Post extends Model implements HasMedia
     public function getTranslation(string $field, ?string $locale = null): ?string
     {
         $locale = $locale ?? app()->getLocale();
-        return $this->translations[$locale][$field] ?? $this->{$field} ?? null;
+        return $this->translations[$locale][$field] ?? $this->attributes[$field] ?? null;
+    }
+
+    public function getTitleAttribute($value): string
+    {
+        $locale = app()->getLocale();
+        return $this->translations[$locale]['title'] ?? $value ?? '';
+    }
+
+    public function getSlugAttribute($value): string
+    {
+        $locale = app()->getLocale();
+        return $this->translations[$locale]['slug'] ?? $value ?? '';
+    }
+
+    public function getContentAttribute($value): string
+    {
+        $locale = app()->getLocale();
+        return $this->translations[$locale]['content'] ?? $value ?? '';
+    }
+
+    public function getExcerptAttribute($value): ?string
+    {
+        $locale = app()->getLocale();
+        return $this->translations[$locale]['excerpt'] ?? $value;
+    }
+
+    /**
+     * Get the raw slug from database (without translation)
+     */
+    public function getRawSlug(): string
+    {
+        return $this->attributes['slug'] ?? '';
     }
 
     public function category(): BelongsTo
@@ -213,11 +302,6 @@ class Post extends Model implements HasMedia
         // Берем первое фото из галереи
         $firstMedia = $this->getFirstMedia('post-gallery');
         return $firstMedia ? $firstMedia->getUrl('webp') : null;
-    }
-
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
     }
 
     public function getMetaTitleAttribute($value)

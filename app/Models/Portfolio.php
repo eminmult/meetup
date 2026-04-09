@@ -11,6 +11,30 @@ class Portfolio extends Model implements HasMedia
 {
     use InteractsWithMedia;
 
+    protected static function booted(): void
+    {
+        static::saving(function (Portfolio $portfolio) {
+            // Auto-fill base columns from translations if empty
+            if (empty($portfolio->title) && !empty($portfolio->translations)) {
+                foreach (['az', 'ru', 'en'] as $lang) {
+                    if (!empty($portfolio->translations[$lang]['title'])) {
+                        $portfolio->title = $portfolio->translations[$lang]['title'];
+                        break;
+                    }
+                }
+            }
+
+            if (empty($portfolio->slug) && !empty($portfolio->translations)) {
+                foreach (['az', 'ru', 'en'] as $lang) {
+                    if (!empty($portfolio->translations[$lang]['slug'])) {
+                        $portfolio->slug = $portfolio->translations[$lang]['slug'];
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
     protected $fillable = [
         'title',
         'slug',
@@ -54,6 +78,29 @@ class Portfolio extends Model implements HasMedia
         return $this->translations[$locale]['title'] ?? $value ?? null;
     }
 
+    public function getSlugAttribute($value): string
+    {
+        $locale = app()->getLocale();
+        return $this->translations[$locale]['slug'] ?? $value ?? '';
+    }
+
+    public function getRawSlug(): ?string
+    {
+        return $this->attributes['slug'] ?? null;
+    }
+
+    public function getDescriptionAttribute($value): ?string
+    {
+        $locale = app()->getLocale();
+        return $this->translations[$locale]['description'] ?? $value ?? null;
+    }
+
+    public function getContentAttribute($value): ?string
+    {
+        $locale = app()->getLocale();
+        return $this->translations[$locale]['content'] ?? $value ?? null;
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(PortfolioCategory::class, 'portfolio_category_id');
@@ -72,11 +119,6 @@ class Portfolio extends Model implements HasMedia
     public function scopeOrdered($query)
     {
         return $query->orderBy('sort_order');
-    }
-
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
     }
 
     public function registerMediaCollections(): void
@@ -153,9 +195,8 @@ class Portfolio extends Model implements HasMedia
 
     public function getUrlAttribute(): string
     {
-        $frontendUrl = config('app.frontend_url', config('app.url'));
-        $slug = $this->getSlugForLocale();
-        return $frontendUrl . '/portfolio/' . $slug;
+        $locale = app()->getLocale();
+        return route('portfolio.show', ['locale' => $locale, 'slug' => $this->slug]);
     }
 
     public function getVideoEmbedUrlAttribute(): ?string

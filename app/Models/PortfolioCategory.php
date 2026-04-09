@@ -47,8 +47,4 @@ class PortfolioCategory extends Model
         return $query->orderBy('sort_order');
     }
 
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
-    }
 }

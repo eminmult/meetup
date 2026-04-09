@@ -10,6 +10,21 @@ class Page extends Model implements HasMedia
 {
     use InteractsWithMedia;
 
+    protected static function booted(): void
+    {
+        static::saving(function (Page $page) {
+            // Auto-generate slug from title if empty
+            if (empty($page->slug) && !empty($page->translations)) {
+                foreach (['az', 'ru', 'en'] as $lang) {
+                    if (!empty($page->translations[$lang]['title'])) {
+                        $page->slug = \Illuminate\Support\Str::slug($page->translations[$lang]['title']);
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
     protected $fillable = [
         'slug',
         'template',
@@ -79,11 +94,6 @@ class Page extends Model implements HasMedia
     public function scopeInMenu($query)
     {
         return $query->where('show_in_menu', true);
-    }
-
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
     }
 
     public function getUrlAttribute(): string
